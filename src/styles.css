@@ -354,3 +354,60 @@ input, textarea { font: inherit; }
 @media (max-width: 600px) {
   .choices { grid-template-columns: 1fr; }
 }
+
+/* ---- やめるボタン（目立たせて押しやすく） ---- */
+.quit-btn { background: #fff; color: var(--ng); flex-shrink: 0; }
+
+/* ---- ホームのナビ・続きから ---- */
+.home-nav { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.resume {
+  background: #fff7e0;
+  border: 3px solid #f2c14e;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 18px;
+  font-weight: 700;
+}
+.unit-size { font-size: 14px; color: var(--sub); font-weight: 400; margin-left: 4px; }
+
+/* ---- アプリ内ダイアログ ---- */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #0d152099;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadein 0.15s;
+}
+@keyframes fadein { from { opacity: 0; } }
+.dialog { background: #fff; border-radius: 22px; padding: 22px; width: min(520px, 100%); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 12px 40px #0004; }
+.dialog-title { margin: 0; font-size: 22px; }
+.dialog-body p { margin: 0; font-size: 17px; line-height: 1.6; color: #33475e; }
+.dialog-actions { display: flex; flex-direction: column; gap: 10px; }
+.dialog-actions .btn { width: 100%; min-height: 54px; }
+
+/* ---- 手書き ---- */
+.hw-area { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.hw-hint { margin: 0; color: var(--sub); }
+.hw-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: center; width: 100%; }
+.hw-canvas { background: #fff; border: 3px solid var(--primary); border-radius: 12px; touch-action: none; display: block; }
+.hw-answer { display: flex; gap: 6px; }
+.hw-answer span {
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  font-size: 92px;
+  font-family: 'Hiragino Mincho ProN', 'YuMincho', 'Yu Mincho', serif;
+  background: #e3f8ee;
+  border: 3px solid var(--ok);
+  border-radius: 12px;
+}

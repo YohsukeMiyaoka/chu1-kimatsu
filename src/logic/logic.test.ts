@@ -110,3 +110,17 @@ describe('問題データ', () => {
     });
   }
 });
+
+describe('保存', () => {
+  it('答えるたびに単元の正答率とまちがいノートに反映される', async () => {
+    const { applyAnswers } = await import('./storage');
+    const q: InputQ = { id: 'q1', unit: 'u1', type: 'input', kind: 'ja', q: '問', answers: ['a'], explain: '' };
+    const base = { users: [], results: [], settings: { timeLimitMin: 50, sound: true }, currentUserId: null, unitStats: {}, mistakes: {}, sessions: {} };
+    let d = applyAnswers(base, 'me', 'japanese', [{ question: q, given: 'b', score: 0 }]);
+    expect(d.unitStats.me['japanese:u1']).toEqual({ ok: 0, total: 1 });
+    expect(Object.keys(d.mistakes.me)).toHaveLength(1);
+    d = applyAnswers(d, 'me', 'japanese', [{ question: q, given: 'a', score: 1 }]);
+    expect(d.unitStats.me['japanese:u1']).toEqual({ ok: 1, total: 2 });
+    expect(Object.keys(d.mistakes.me)).toHaveLength(0);
+  });
+});

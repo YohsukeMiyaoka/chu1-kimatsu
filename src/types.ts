@@ -61,7 +61,14 @@ export interface SelfQ extends QBase {
   points?: string[];
 }
 
-export type Question = ChoiceQ | InputQ | OrderQ | SelfQ;
+/** 漢字の書き取り：指で書いて、正しい字と見くらべて自分で採点する */
+export interface WriteQ extends QBase {
+  type: 'write';
+  /** 正しい漢字（送りがなは問題文の外） */
+  answer: string;
+}
+
+export type Question = ChoiceQ | InputQ | OrderQ | SelfQ | WriteQ;
 
 /** 問題を作る関数（数学の計算など、数値を変えて毎回ちがう問題を作る） */
 export type Gen = (rng: () => number) => Question;

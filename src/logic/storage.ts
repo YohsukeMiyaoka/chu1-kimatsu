@@ -1,4 +1,5 @@
-import type { AnswerRecord, ExamResult, Settings, User } from '../types';
+import type { AnswerRecord, ExamResult, Settings, SubjectId, User } from '../types';
+import type { Item } from './exam';
 
 // 端末の中（localStorage）だけに保存する。外には送らない。
 const KEY = 'chu1-kimatsu:v1';
@@ -6,6 +7,18 @@ const KEY = 'chu1-kimatsu:v1';
 export interface UnitStat {
   ok: number;
   total: number;
+}
+
+/** 途中のテスト（再読み込み・中断しても続きから再開できるように保存する） */
+export interface Session {
+  userId: string;
+  subject: SubjectId;
+  mode: 'exam' | 'practice';
+  title: string;
+  items: Item[];
+  records: AnswerRecord[];
+  /** これまでにかかった時間（秒）。アプリを閉じていた時間は数えない */
+  elapsedSec: number;
 }
 
 export interface SaveData {
@@ -17,6 +30,8 @@ export interface SaveData {
   unitStats: Record<string, Record<string, UnitStat>>;
   /** userId → まちがいノート（問題IDごと。正解したら消える） */
   mistakes: Record<string, Record<string, AnswerRecord & { subject: string }>>;
+  /** ユーザーごとの途中のテスト */
+  sessions: Record<string, Session>;
 }
 
 export const DEFAULT_SETTINGS: Settings = { timeLimitMin: 50, sound: true };
@@ -28,6 +43,7 @@ const empty = (): SaveData => ({
   currentUserId: null,
   unitStats: {},
   mistakes: {},
+  sessions: {},
 });
 
 export function load(): SaveData {
@@ -42,6 +58,7 @@ export function load(): SaveData {
       currentUserId: d.currentUserId ?? null,
       unitStats: d.unitStats ?? {},
       mistakes: d.mistakes ?? {},
+      sessions: d.sessions ?? {},
     };
   } catch {
     return empty();

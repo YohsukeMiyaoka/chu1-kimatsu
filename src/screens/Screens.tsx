@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { AnswerRecord, ExamResult, Settings, Subject, User } from '../types';
-import type { SaveData } from '../logic/storage';
+import type { SaveData, Session } from '../logic/storage';
+import { Dialog } from '../components/Dialog';
 import { SUBJECTS } from '../data';
-import { examMax } from '../logic/exam';
+import { examMax, unitSize } from '../logic/exam';
 import { ReviewList } from '../components/ReviewList';
 
 const fmtTime = (sec: number) => `${Math.floor(sec / 60)}分${String(sec % 60).padStart(2, '0')}秒`;
@@ -15,6 +16,7 @@ const fmtDate = (iso: string) => {
 export function UserSelect({ users, onSelect, onAdd, onDelete }: { users: User[]; onSelect: (id: string) => void; onAdd: (name: string) => void; onDelete: (id: string) => void }) {
   const [name, setName] = useState('');
   const [editing, setEditing] = useState(false);
+  const [toDelete, setToDelete] = useState<User | null>(null);
   const add = () => {
     const n = name.trim();
     if (!n) return;
@@ -33,7 +35,7 @@ export function UserSelect({ users, onSelect, onAdd, onDelete }: { users: User[]
           <div key={u.id} className="user-row">
             <button className="btn big user-btn" disabled={editing} onClick={() => onSelect(u.id)}>{u.name}</button>
             {editing && (
-              <button className="btn danger round" aria-label={`${u.name}を消す`} onClick={() => confirm(`「${u.name}」を消しますか？\n記録も全部消えます。`) && onDelete(u.id)}>✕</button>
+              <button className="btn danger round" aria-label={`${u.name}を消す`} onClick={() => setToDelete(u)}>✕</button>
             )}
           </div>
         ))}
@@ -44,17 +46,29 @@ export function UserSelect({ users, onSelect, onAdd, onDelete }: { users: User[]
         <button className="btn primary" disabled={!name.trim()} onClick={add}>登録</button>
       </div>
       {users.length > 0 && <button className="btn ghost" onClick={() => setEditing(!editing)}>{editing ? '終わる' : '名前を消す'}</button>}
+      {toDelete && (
+        <Dialog
+          title={`「${toDelete.name}」を消しますか？`}
+          actions={[
+            { label: '消す', kind: 'danger', onClick: () => { onDelete(toDelete.id); setToDelete(null); } },
+            { label: 'やめる', kind: 'plain', onClick: () => setToDelete(null) },
+          ]}
+        >
+          <p>記録も全部消えます。</p>
+        </Dialog>
+      )}
     </div>
   );
 }
 
 // ---------- ホーム（教科を選ぶ） ----------
-export function Home({ user, data, onSubject, onMistakes, onHistory, onSettings, onSwitchUser }: {
-  user: User; data: SaveData; onSubject: (s: Subject) => void; onMistakes: () => void; onHistory: () => void; onSettings: () => void; onSwitchUser: () => void;
+export function Home({ user, data, session, onResume, onDiscard, onSubject, onMistakes, onHistory, onSettings, onSwitchUser }: {
+  user: User; data: SaveData; session?: Session; onResume: () => void; onDiscard: () => void; onSubject: (s: Subject) => void; onMistakes: () => void; onHistory: () => void; onSettings: () => void; onSwitchUser: () => void;
 }) {
   const mine = data.results.filter((r) => r.userId === user.id);
   const nMistakes = Object.keys(data.mistakes[user.id] ?? {}).length;
   const bests = SUBJECTS.map((s) => Math.max(-1, ...mine.filter((r) => r.subject === s.id).map((r) => r.score)));
+  const [discardOpen, setDiscardOpen] = useState(false);
   const total = bests.every((b) => b >= 0) ? bests.reduce((a, b) => a + b, 0) : null;
   return (
     <div className="screen">
@@ -62,6 +76,23 @@ export function Home({ user, data, onSubject, onMistakes, onHistory, onSettings,
         <h1 className="title-sm">{user.name} さん</h1>
         <button className="btn small ghost" onClick={onSwitchUser}>ユーザー変更</button>
       </header>
+      <nav className="home-nav">
+        <button className="btn" onClick={onMistakes}>📕 まちがいノート（{nMistakes}問）</button>
+        <button className="btn" onClick={onHistory}>📊 記録</button>
+        <button className="btn" onClick={onSettings}>⚙ 設定</button>
+      </nav>
+      {session && <ResumeBanner session={session} onResume={onResume} onDiscard={() => setDiscardOpen(true)} />}
+      {discardOpen && (
+        <Dialog
+          title="途中のテストを捨てますか？"
+          actions={[
+            { label: '捨てる', kind: 'danger', onClick: () => { onDiscard(); setDiscardOpen(false); } },
+            { label: 'やめる', kind: 'plain', onClick: () => setDiscardOpen(false) },
+          ]}
+        >
+          <p>答えた分は正答率とまちがいノートには残りますが、本番テストの点数は記録されません。</p>
+        </Dialog>
+      )}
       <div className="subject-grid">
         {SUBJECTS.map((s, i) => {
           const last = mine.filter((r) => r.subject === s.id).at(-1);
@@ -76,19 +107,28 @@ export function Home({ user, data, onSubject, onMistakes, onHistory, onSettings,
         })}
       </div>
       {total !== null && <p className="total">5教科の最高点の合計：<strong>{total}</strong> / 500点</p>}
-      <div className="row">
-        <button className="btn" onClick={onMistakes}>📕 まちがいノート（{nMistakes}問）</button>
-        <button className="btn" onClick={onHistory}>📊 記録</button>
-        <button className="btn" onClick={onSettings}>⚙ 設定</button>
-      </div>
       <p className="note small">試験日：11/25（水）国語・英語・理科　11/26（木）社会・数学</p>
     </div>
   );
 }
 
+/** 途中の本番テストの「続きから」 */
+function ResumeBanner({ session, onResume, onDiscard }: { session: Session; onResume: () => void; onDiscard?: () => void }) {
+  const s = SUBJECTS.find((x) => x.id === session.subject);
+  return (
+    <div className="resume">
+      <span>⏸ {s?.icon} {s?.name} {session.title}の途中（{session.records.length} / {session.items.length}問・{Math.floor(session.elapsedSec / 60)}分経過）</span>
+      <div className="row">
+        <button className="btn primary" onClick={onResume}>続きから</button>
+        {onDiscard && <button className="btn small ghost" onClick={onDiscard}>捨てる</button>}
+      </div>
+    </div>
+  );
+}
+
 // ---------- 教科のメニュー ----------
-export function SubjectMenu({ subject, stats, onExam, onPractice, onBack, timeLimitMin }: {
-  subject: Subject; stats: Record<string, { ok: number; total: number }>; onExam: () => void; onPractice: (unitIds: string[]) => void; onBack: () => void; timeLimitMin: number;
+export function SubjectMenu({ subject, stats, session, onResume, onExam, onPractice, onBack, timeLimitMin }: {
+  subject: Subject; stats: Record<string, { ok: number; total: number }>; session?: Session; onResume: () => void; onExam: () => void; onPractice: (unitIds: string[]) => void; onBack: () => void; timeLimitMin: number;
 }) {
   const nExam = subject.exam.reduce((a, s) => a + s.count, 0);
   return (
@@ -99,10 +139,11 @@ export function SubjectMenu({ subject, stats, onExam, onPractice, onBack, timeLi
         <span />
       </header>
       <p className="scope"><strong>試験範囲：</strong>{subject.scope}</p>
+      {session && <ResumeBanner session={session} onResume={onResume} />}
       <button className="btn big primary exam-btn" style={{ background: subject.color }} onClick={onExam}>
         📝 本番テスト（{nExam}問・{examMax(subject)}点満点・{timeLimitMin}分）
       </button>
-      <h2 className="h2">単元別に練習（10問ずつ・すぐに答え合わせ）</h2>
+      <h2 className="h2">単元別に練習（10問ずつ・すぐに答え合わせ。10問未満の単元は全問）</h2>
       <div className="unit-list">
         <button className="unit-btn mix" onClick={() => onPractice(subject.units.map((u) => u.id))}>
           <span>🎲 全部の単元からミックス</span>
@@ -112,7 +153,10 @@ export function SubjectMenu({ subject, stats, onExam, onPractice, onBack, timeLi
           const pct = st && st.total ? Math.round((st.ok / st.total) * 100) : null;
           return (
             <button key={u.id} className="unit-btn" onClick={() => onPractice([u.id])}>
-              <span>{u.name}</span>
+              <span>
+                {u.name}
+                <span className="unit-size">{u.gens?.length ? '（毎回ちがう問題）' : `（全${unitSize(u)}問）`}</span>
+              </span>
               <span className={`pct ${pct === null ? '' : pct >= 80 ? 'good' : pct >= 50 ? 'mid' : 'bad'}`}>
                 {pct === null ? '未挑戦' : `正答率 ${pct}%`}
               </span>

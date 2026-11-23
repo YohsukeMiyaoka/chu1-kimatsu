@@ -115,5 +115,7 @@ export function answerText(q: Question): string {
       return q.tokens.join(q.join);
     case 'self':
       return q.model;
+    case 'write':
+      return q.answer;
   }
 }

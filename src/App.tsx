@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AnswerRecord, ExamResult, Subject } from './types';
-import { applyAnswers, load, newId, save, type SaveData } from './logic/storage';
+import { applyAnswers, load, newId, save, type SaveData, type Session } from './logic/storage';
 import { buildExam, buildPractice, prepare, type Item } from './logic/exam';
 import { shuffle } from './logic/random';
 import { setSoundEnabled, sounds } from './logic/sound';
@@ -12,11 +12,17 @@ type View =
   | { name: 'users' }
   | { name: 'home' }
   | { name: 'subject'; subject: Subject }
-  | { name: 'quiz'; subject: Subject; items: Item[]; mode: 'exam' | 'practice'; title: string }
+  | { name: 'quiz'; subject: Subject; items: Item[]; mode: 'exam' | 'practice'; title: string; records?: AnswerRecord[]; elapsed?: number }
   | { name: 'result'; subject: Subject; mode: 'exam' | 'practice'; records: AnswerRecord[]; result: ExamResult | null; isBest: boolean }
   | { name: 'mistakes' }
   | { name: 'history' }
   | { name: 'settings' };
+
+const withoutSession = (d: SaveData, userId: string): SaveData => {
+  const sessions = { ...d.sessions };
+  delete sessions[userId];
+  return { ...d, sessions };
+};
 
 export default function App() {
   const [data, setData] = useState<SaveData>(load);
@@ -31,33 +37,45 @@ export default function App() {
       <UserSelect
         users={data.users}
         onSelect={(id) => {
-          setData({ ...data, currentUserId: id });
+          setData((d) => ({ ...d, currentUserId: id }));
           setView({ name: 'home' });
         }}
         onAdd={(name) => {
           const u = { id: newId(), name };
-          setData({ ...data, users: [...data.users, u], currentUserId: u.id });
+          setData((d) => ({ ...d, users: [...d.users, u], currentUserId: u.id }));
           setView({ name: 'home' });
         }}
         onDelete={(id) =>
-          setData({
-            ...data,
-            users: data.users.filter((u) => u.id !== id),
-            results: data.results.filter((r) => r.userId !== id),
-            currentUserId: data.currentUserId === id ? null : data.currentUserId,
-          })
+          setData((d) => ({
+            ...withoutSession(d, id),
+            users: d.users.filter((u) => u.id !== id),
+            results: d.results.filter((r) => r.userId !== id),
+            currentUserId: d.currentUserId === id ? null : d.currentUserId,
+          }))
         }
       />
     );
   }
 
+  const uid = user.id;
   const home = () => setView({ name: 'home' });
+  const session = data.sessions[uid];
 
   const startPractice = (subject: Subject, items: Item[], title: string) =>
     setView({ name: 'quiz', subject, items, mode: 'practice', title });
 
+  const startExam = (subject: Subject) => {
+    const items = buildExam(subject, Math.random);
+    const s: Session = { userId: uid, subject: subject.id, mode: 'exam', title: '本番テスト', items, records: [], elapsedSec: 0 };
+    // 新しい本番を始めたら、前の途中のテストは捨てる
+    setData((d) => ({ ...d, sessions: { ...d.sessions, [uid]: s } }));
+    setView({ name: 'quiz', subject, items, mode: 'exam', title: '本番テスト' });
+  };
+
+  const resume = (s: Session) =>
+    setView({ name: 'quiz', subject: subjectById(s.subject), items: s.items, mode: s.mode, title: s.title, records: s.records, elapsed: s.elapsedSec });
+
   const finishQuiz = (subject: Subject, mode: 'exam' | 'practice', records: AnswerRecord[], durationSec: number) => {
-    let next = applyAnswers(data, user.id, subject.id, records);
     let result: ExamResult | null = null;
     let isBest = false;
     if (mode === 'exam') {
@@ -67,17 +85,17 @@ export default function App() {
       }
       secs.forEach((s) => (s.got = Math.round(s.got * 10) / 10));
       const score = Math.round(secs.reduce((a, s) => a + s.got, 0));
-      const prevBest = Math.max(-1, ...data.results.filter((r) => r.userId === user.id && r.subject === subject.id).map((r) => r.score));
+      const prevBest = Math.max(-1, ...data.results.filter((r) => r.userId === uid && r.subject === subject.id).map((r) => r.score));
       isBest = prevBest >= 0 && score > prevBest;
       result = {
-        id: newId(), userId: user.id, subject: subject.id, date: new Date().toISOString(), score, durationSec,
+        id: newId(), userId: uid, subject: subject.id, date: new Date().toISOString(), score, durationSec,
         sectionScores: secs, wrongs: records.filter((r) => r.score < 1),
       };
+      const res = result;
       // 記録は新しい30回分だけ（まちがえた問題も持つので）
-      next = { ...next, results: [...next.results, result].slice(-30) };
+      setData((d) => ({ ...withoutSession(d, uid), results: [...d.results, res].slice(-30) }));
       sounds.fanfare();
     }
-    setData(next);
     setView({ name: 'result', subject, mode, records, result, isBest });
   };
 
@@ -87,6 +105,9 @@ export default function App() {
         <Home
           user={user}
           data={data}
+          session={session}
+          onResume={() => session && resume(session)}
+          onDiscard={() => setData((d) => withoutSession(d, uid))}
           onSubject={(subject) => setView({ name: 'subject', subject })}
           onMistakes={() => setView({ name: 'mistakes' })}
           onHistory={() => setView({ name: 'history' })}
@@ -99,10 +120,12 @@ export default function App() {
       return (
         <SubjectMenu
           subject={subject}
-          stats={data.unitStats[user.id] ?? {}}
+          stats={data.unitStats[uid] ?? {}}
           timeLimitMin={data.settings.timeLimitMin}
+          session={session?.subject === subject.id ? session : undefined}
+          onResume={() => session && resume(session)}
           onBack={home}
-          onExam={() => setView({ name: 'quiz', subject, items: buildExam(subject, Math.random), mode: 'exam', title: '本番テスト' })}
+          onExam={() => startExam(subject)}
           onPractice={(ids) => {
             const units = subject.units.filter((u) => ids.includes(u.id));
             startPractice(subject, buildPractice(units, 10, Math.random), ids.length === 1 ? units[0].name : 'ミックス');
@@ -110,18 +133,39 @@ export default function App() {
         />
       );
     }
-    case 'quiz':
+    case 'quiz': {
+      const { subject, mode } = view;
       return (
         <QuizScreen
-          subject={view.subject}
+          subject={subject}
           items={view.items}
-          mode={view.mode}
+          mode={mode}
           title={view.title}
+          initialRecords={view.records}
+          initialElapsed={view.elapsed}
           timeLimitMin={data.settings.timeLimitMin}
-          onQuit={() => setView({ name: 'subject', subject: view.subject })}
-          onFinish={(recs, sec) => finishQuiz(view.subject, view.mode, recs, sec)}
+          onAnswer={(rec, recs, elapsed) =>
+            setData((d) => {
+              // 答えるたびに、単元の正答率とまちがいノートに反映する
+              const next = applyAnswers(d, uid, subject.id, [rec]);
+              const s = d.sessions[uid];
+              if (mode !== 'exam' || !s) return next;
+              return { ...next, sessions: { ...next.sessions, [uid]: { ...s, records: recs, elapsedSec: elapsed } } };
+            })
+          }
+          onTick={(elapsed) =>
+            mode === 'exam' &&
+            setData((d) => (d.sessions[uid] ? { ...d, sessions: { ...d.sessions, [uid]: { ...d.sessions[uid], elapsedSec: elapsed } } } : d))
+          }
+          onSuspend={() => setView({ name: 'home' })}
+          onQuit={() => {
+            if (mode === 'exam') setData((d) => withoutSession(d, uid));
+            setView({ name: 'subject', subject });
+          }}
+          onFinish={(recs, sec) => finishQuiz(subject, mode, recs, sec)}
         />
       );
+    }
     case 'result':
       return (
         <ResultScreen
@@ -141,7 +185,7 @@ export default function App() {
         />
       );
     case 'mistakes': {
-      const notes = Object.values(data.mistakes[user.id] ?? {}).reverse();
+      const notes = Object.values(data.mistakes[uid] ?? {}).reverse();
       return (
         <MistakesScreen
           notes={notes}
@@ -157,9 +201,9 @@ export default function App() {
       );
     }
     case 'history':
-      return <HistoryScreen results={data.results.filter((r) => r.userId === user.id)} onBack={home} />;
+      return <HistoryScreen results={data.results.filter((r) => r.userId === uid)} onBack={home} />;
     case 'settings':
-      return <SettingsScreen settings={data.settings} onChange={(s) => setData({ ...data, settings: s })} onBack={home} />;
+      return <SettingsScreen settings={data.settings} onChange={(s) => setData((d) => ({ ...d, settings: s }))} onBack={home} />;
     default:
       return null;
   }
