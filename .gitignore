@@ -1,0 +1,7 @@
+node_modules
+dist
+dev-dist
+*.local
+# 範囲表・教科書の写真（名前が写っている）は公開しない
+/data/
+preview.log
