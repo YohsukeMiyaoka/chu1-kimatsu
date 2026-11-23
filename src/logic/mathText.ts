@@ -29,3 +29,30 @@ export function parseMath(text: string): MathSeg[] {
   if (last < text.length) out.push({ t: 'text', s: text.slice(last) });
   return out;
 }
+
+/**
+ * 文字列を「式の部分」と「日本語の部分」に分ける。
+ * 式の部分＝英字・数字・空白・数学の記号が続くところ（ただし英字・数字・＝などをふくむものだけ）。
+ * 式の部分は、文字・数字・記号をすべて同じ書体で表示する。
+ */
+export type MathRun = { s: string; math: boolean };
+const RUN = /[A-Za-z0-9+\-−×÷=≦≧<>().,:²/ ]+/g;
+const HAS_MATH = /[A-Za-z0-9=+−×÷≦≧<>/]/;
+
+export function splitMathRuns(text: string): MathRun[] {
+  const out: MathRun[] = [];
+  let last = 0;
+  for (const m of text.matchAll(RUN)) {
+    const raw = m[0];
+    if (!HAS_MATH.test(raw)) continue;
+    // 前後の空白は式の外に出す
+    const lead = raw.length - raw.trimStart().length;
+    const body = raw.trim();
+    const start = m.index! + lead;
+    if (start > last) out.push({ s: text.slice(last, start), math: false });
+    out.push({ s: body, math: true });
+    last = start + body.length;
+  }
+  if (last < text.length) out.push({ s: text.slice(last), math: false });
+  return out;
+}

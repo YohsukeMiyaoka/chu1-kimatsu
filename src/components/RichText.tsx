@@ -1,29 +1,31 @@
-import { Fragment, type ReactNode } from 'react';
-import { parseMath } from '../logic/mathText';
+import { Fragment } from 'react';
+import { parseMath, splitMathRuns } from '../logic/mathText';
 
 /**
- * 数学の式の文字を教科書のように表示する：
+ * 数学の文字列を表示する。
+ *  - 式の部分（英字・数字・記号のまとまり）は、文字・数字・記号をすべて同じ書体（.math）で表示する
+ *  - 分数は教科書のように上下に分ける
  *  - マイナスは「−」にそろえる
- *  - 文字（x, y, a）は斜体（単位の m・g・cm などは斜体にしない）
  */
-function mathChars(s: string, key: string): ReactNode {
-  const t = s.replace(/-/g, '−');
-  const parts = t.split(/(?<![A-Za-z])([xya])(?![A-Za-z])/g);
-  return parts.map((p, i) => (i % 2 === 1 ? <i key={`${key}-${i}`} className="var">{p}</i> : <Fragment key={`${key}-${i}`}>{p}</Fragment>));
-}
-
-/** 数学の文字列：分数を教科書のように上下に分けて表示する */
 export function MathText({ text }: { text: string }) {
   return (
     <>
-      {parseMath(text).map((seg, i) =>
-        seg.t === 'text' ? (
-          <Fragment key={i}>{mathChars(seg.s, `t${i}`)}</Fragment>
-        ) : (
-          <span key={i} className="frac" role="math" aria-label={`${seg.den}分の${seg.num}`}>
-            <span className="frac-num">{mathChars(seg.num, `n${i}`)}</span>
-            <span className="frac-den">{mathChars(seg.den, `d${i}`)}</span>
+      {splitMathRuns(text.replace(/-/g, '−')).map((run, i) =>
+        run.math ? (
+          <span key={i} className="math">
+            {parseMath(run.s).map((seg, j) =>
+              seg.t === 'text' ? (
+                <Fragment key={j}>{seg.s}</Fragment>
+              ) : (
+                <span key={j} className="frac" role="math" aria-label={`${seg.den}分の${seg.num}`}>
+                  <span className="frac-num">{seg.num}</span>
+                  <span className="frac-den">{seg.den}</span>
+                </span>
+              ),
+            )}
           </span>
+        ) : (
+          <Fragment key={i}>{run.s}</Fragment>
         ),
       )}
     </>
@@ -33,7 +35,7 @@ export function MathText({ text }: { text: string }) {
 /**
  * 問題文・本文の簡単な書式。
  * __ことば__ → 傍線（――線部）を引いて表示する。テストの「――線部の読みを書きなさい」に合わせるため。
- * math のときは、分数を上下に分けた形で表示する。
+ * math のときは、式を同じ書体にし、分数を上下に分けた形で表示する。
  */
 export function RichText({ text, math = false }: { text: string; math?: boolean }) {
   const parts = text.split(/__(.+?)__/g);

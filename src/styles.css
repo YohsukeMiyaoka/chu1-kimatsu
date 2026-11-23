@@ -463,5 +463,6 @@ input, textarea { font: inherit; }
 .frac-num { padding: 0 0.2em; border-bottom: 0.08em solid currentColor; }
 .frac-den { padding: 0 0.2em; }
 .prompt .frac { font-size: 0.95em; }
-/* 式の文字（x, y, a）は教科書のように斜体 */
-.var { font-family: 'Times New Roman', 'Hiragino Mincho ProN', serif; font-style: italic; font-size: 1.12em; padding: 0 0.04em; }
+/* 式の部分は、文字・数字・記号をすべて同じ書体にする（斜体にはしない） */
+.math { font-family: 'Times New Roman', 'Times', serif; font-style: normal; font-size: 1.12em; white-space: nowrap; }
+.math .frac { font-size: 0.9em; }

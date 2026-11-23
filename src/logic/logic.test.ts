@@ -188,3 +188,14 @@ describe('数学の分数の表示', async () => {
     expect(show('x : 6 = 2 : 3')).toBe('x : 6 = 2 : 3');
   });
 });
+
+describe('数学の式の部分の見分け', async () => {
+  const { splitMathRuns } = await import('./mathText');
+  const show = (s: string) => splitMathRuns(s).map((r) => (r.math ? `[${r.s}]` : r.s)).join('');
+  it('式の部分だけをまとめる', () => {
+    expect(show('y = 12/x のグラフが、x 座標が 3 の点で交わる。')).toBe('[y = 12/x] のグラフが、[x] 座標が [3] の点で交わる。');
+    expect(show('次の方程式を解きなさい。\n(x + 1)/2 = 3')).toBe('次の方程式を解きなさい。\n[(x + 1)/2 = 3]');
+    expect(show('点 A(1, 10) から')).toBe('点 [A(1, 10)] から');
+    expect(show('「、」だけ')).toBe('「、」だけ');
+  });
+});
