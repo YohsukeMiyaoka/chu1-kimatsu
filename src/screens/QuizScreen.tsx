@@ -139,6 +139,8 @@ export function QuizScreen(props: Props) {
   };
 
   const passage = q.passage ? subject.passages?.[q.passage] : undefined;
+  /** 数学は分数を教科書のように上下に分けて表示する */
+  const isMath = subject.id === 'math';
   const done = current !== null;
 
   const answerArea = (question: Question) => {
@@ -226,12 +228,12 @@ export function QuizScreen(props: Props) {
           </aside>
         )}
         <main className="q-main">
-          <p className="prompt"><RichText text={q.q} /></p>
+          <p className="prompt"><RichText text={q.q} math={isMath} /></p>
           {q.audio && (
             <button className="btn audio" onClick={() => speak(q.audio!)}>🔊 もう一度聞く</button>
           )}
           {isExam && prev && (
-            <p className="prev-answer">いまの答え：<strong>{prev.given}</strong>（答え直すと上書きされます）</p>
+            <p className="prev-answer">いまの答え：<strong><RichText text={prev.given} math={isMath} /></strong>（答え直すと上書きされます）</p>
           )}
           {answerArea(q)}
           {!isExam && !done && q.type !== 'self' && (
@@ -259,9 +261,9 @@ export function QuizScreen(props: Props) {
             <button className="btn primary" onClick={nextPractice}>{idx + 1 >= n ? '結果を見る' : '次へ →'}</button>
           </div>
           {!result && q.type !== 'self' && (
-            <p className="feedback-answer">正解：<strong>{answerText(q)}</strong></p>
+            <p className="feedback-answer">正解：<strong><RichText text={answerText(q)} math={isMath} /></strong></p>
           )}
-          <p className="explanation">{q.explain}</p>
+          <p className="explanation"><RichText text={q.explain} math={isMath} /></p>
         </div>
       )}
 

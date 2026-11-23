@@ -173,3 +173,18 @@ describe('数学：作った方程式の答えを代入して確かめる', () =
     expect(checked).toBeGreaterThan(500);
   });
 });
+
+describe('数学の分数の表示', async () => {
+  const { parseMath } = await import('./mathText');
+  const show = (s: string) => parseMath(s).map((g) => (g.t === 'text' ? g.s : `[${g.num}|${g.den}]`)).join('');
+  it('いろいろな分数を見つける', () => {
+    expect(show('(x + 1)/2 − (x − 1)/3 = 2')).toBe('[x + 1|2] − [x − 1|3] = 2');
+    expect(show('x/3 − 1 = 2')).toBe('[x|3] − 1 = 2');
+    expect(show('y = −12/x')).toBe('y = −[12|x]');
+    expect(show('y = 2/3x')).toBe('y = [2|3]x');
+    expect(show('a = y/x = 6 ÷ 2')).toBe('a = [y|x] = 6 ÷ 2');
+    expect(show('1/3倍')).toBe('[1|3]倍');
+    expect(show('0.5/2')).toBe('[0.5|2]');
+    expect(show('x : 6 = 2 : 3')).toBe('x : 6 = 2 : 3');
+  });
+});

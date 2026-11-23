@@ -217,7 +217,7 @@ const prop: Gen[] = [
     // 比例定数が分数
     const [p, q] = pick(r, [[2, 3], [3, 4], [1, 2], [-2, 3], [-3, 2], [3, 5], [-1, 4]]);
     const k = nz(r, -2, 2), x = q * k * (r() < 0.5 ? 1 : 2), y = (p * x) / q;
-    return num('m-prop', `y は x に比例し、x = ${M(x)} のとき y = ${M(y)} です。y を x の式で表しなさい。\n（比例定数が分数のときは 2/3x のように書く）`, ax(frac(p, q)),
+    return num('m-prop', `y は x に比例し、x = ${M(x)} のとき y = ${M(y)} です。y を x の式で表しなさい。\n（比例定数が分数のときは、キーパッドの「分数 /」を使って入力する）`, ax(frac(p, q)),
       `y = ax に代入して ${M(y)} = a × (${M(x)})　a = ${frac(p, q).replace('-', '−')}\nよって y = ${frac(p, q).replace('-', '−')}x`, { prefix: 'y =' });
   },
   (r) => {

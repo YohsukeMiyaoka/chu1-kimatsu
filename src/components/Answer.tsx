@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChoiceQ, InputQ, OrderQ, SelfQ } from '../types';
 import { shuffle } from '../logic/random';
+import { MathText } from './RichText';
 
 /** 選択式 */
 export function ChoiceArea({ q, picked, done, onPick }: { q: ChoiceQ; picked: string | null; done: boolean; onPick: (c: string) => void }) {
@@ -17,7 +18,7 @@ export function ChoiceArea({ q, picked, done, onPick }: { q: ChoiceQ; picked: st
         return (
           <button key={c} className={cls} disabled={done} onClick={() => onPick(c)}>
             <span className="choice-mark">{'アイウエオ'[i]}</span>
-            <span>{c}</span>
+            <span>{q.unit.startsWith('m-') ? <MathText text={c} /> : c}</span>
           </button>
         );
       })}
@@ -33,15 +34,15 @@ export function MathInput({ q, value, onChange, onSubmit, done, result }: { q: I
   return (
     <div className="math-input">
       <div className={`answer-box ${result === true ? 'is-correct' : result === false ? 'is-wrong' : ''}`}>
-        {q.prefix && <span className="affix">{q.prefix}</span>}
-        <span className="answer-text">{value ? show(value) : <span className="placeholder">キーで入力</span>}</span>
+        {q.prefix && <span className="affix"><MathText text={q.prefix} /></span>}
+        <span className="answer-text">{value ? <MathText text={show(value)} /> : <span className="placeholder">キーで入力</span>}</span>
         {q.suffix && <span className="affix">{q.suffix}</span>}
       </div>
       {!done && (
         <div className="math-pad">
           {PAD.map((k) => (
             <button key={k} className={`key ${/\d/.test(k) ? '' : 'func'}`} onClick={() => onChange(value + k)}>
-              {k === '-' ? '−' : k === '/' ? '分数 /' : k}
+              {k === '-' ? '−' : k === '/' ? '分数 /' : /^[xya]$/.test(k) ? <i className="var">{k}</i> : k}
             </button>
           ))}
           <button className="key delete" onClick={() => onChange(value.slice(0, -1))}>⌫ 1字消す</button>
