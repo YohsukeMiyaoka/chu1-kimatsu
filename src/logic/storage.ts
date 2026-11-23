@@ -16,7 +16,10 @@ export interface Session {
   mode: 'exam' | 'practice';
   title: string;
   items: Item[];
-  records: AnswerRecord[];
+  /** 問題ごとの答え（まだ答えていない問題は null）。前の問題にもどって答え直せる */
+  answers: (AnswerRecord | null)[];
+  /** 今の問題の番号 */
+  idx: number;
   /** これまでにかかった時間（秒）。アプリを閉じていた時間は数えない */
   elapsedSec: number;
 }
@@ -58,7 +61,8 @@ export function load(): SaveData {
       currentUserId: d.currentUserId ?? null,
       unitStats: d.unitStats ?? {},
       mistakes: d.mistakes ?? {},
-      sessions: d.sessions ?? {},
+      // 古い形（answers がない）の途中データは捨てる
+      sessions: Object.fromEntries(Object.entries(d.sessions ?? {}).filter(([, v]) => Array.isArray((v as Partial<Session>).answers))),
     };
   } catch {
     return empty();

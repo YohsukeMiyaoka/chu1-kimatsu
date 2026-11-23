@@ -237,15 +237,24 @@ const prop: Gen[] = [
   (r) => {
     // 表から比例定数
     const a = nz(r, -4, 4);
-    const xs = [1, 2, 3, 4];
-    return num('m-prop', `次の表で、y は x に比例しています。比例定数を求めなさい。\n\nx │ ${xs.join('　')}\ny │ ${xs.map((x) => M(a * x)).join('　')}`, a,
-      `比例定数 a = y/x = ${M(a * 2)} ÷ 2 = ${M(a)}（どの組でも同じ）`);
+    const xs = [-2, -1, 0, 1, 2, 3];
+    // 1か所を空らんにして、そこを答えさせることもある
+    const blank = pick(r, [null, 4, 5]);
+    const row = xs.map((x, i) => (i === blank ? '?' : M(a * x)));
+    const fig = { kind: 'table' as const, head: ['x', ...xs.map(M)], rows: [['y', ...row]] };
+    if (blank !== null) {
+      return num('m-prop', `表の y は x に比例しています。表の ? に入る数を求めなさい。`, a * xs[blank],
+        `比例定数 a = y/x = ${M(a)}（x = 1 のとき y = ${M(a)}）\ny = ${term(a)} に x = ${xs[blank]} を代入して y = ${M(a * xs[blank])}`, { fig });
+    }
+    return num('m-prop', `表の y は x に比例しています。比例定数を求めなさい。`, a,
+      `比例定数 a = y/x = ${M(a * 2)} ÷ 2 = ${M(a)}（どの組でも同じ）`, { fig });
   },
   (r) => {
-    const a = pick(r, [12, 24, 18, 6]);
+    const a = pick(r, [12, 24, 18, 6, -12, -6]);
     const xs = [1, 2, 3, 6].filter((x) => a % x === 0);
-    return num('m-inv', `次の表で、y は x に反比例しています。比例定数を求めなさい。\n\nx │ ${xs.join('　')}\ny │ ${xs.map((x) => a / x).join('　')}`, a,
-      `反比例では xy の値が一定で、それが比例定数。\n1 × ${a} = ${a}`);
+    const fig = { kind: 'table' as const, head: ['x', ...xs.map(M)], rows: [['y', ...xs.map((x) => M(a / x))]] };
+    return num('m-inv', `表の y は x に反比例しています。比例定数を求めなさい。`, a,
+      `反比例では xy の値が一定で、それが比例定数。\n1 × (${M(a)}) = ${M(a)}`, { fig });
   },
 ];
 

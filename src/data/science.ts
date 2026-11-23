@@ -1,6 +1,7 @@
 // 理科：東京書籍「新しい科学1」化学 第2章「気体の性質」〜第4章「物質の姿と状態変化」（P.91〜137）
 // ＋ガスバーナー・メスシリンダーの操作
 import type { ChoiceQ, Gen, InputQ, SelfQ, Subject } from '../types';
+import { SOLUB } from './solubility';
 
 let cid = 0;
 const ch = (unit: string, q: string, answer: string, wrong: string[], explain: string, extra: Partial<ChoiceQ> = {}): ChoiceQ => ({
@@ -84,16 +85,9 @@ const sol: (ChoiceQ | InputQ)[] = [
   ch('s-sol', '混合物はどれですか。', '食塩水', ['酸素', '塩化ナトリウム', 'エタノール'], 'いくつかの物質が混ざったものが混合物。食塩水は塩化ナトリウムと水の混合物。'),
 ];
 
-// 溶解度（g / 水100g）
-const SOLUB: Record<string, Record<number, number>> = {
-  硝酸カリウム: { 0: 13.3, 20: 31.6, 40: 63.9, 60: 109.2 },
-  ミョウバン: { 0: 5.7, 20: 11.4, 40: 23.8, 60: 57.4 },
-  塩化ナトリウム: { 0: 35.7, 20: 35.8, 40: 36.3, 60: 37.1 },
-};
-const table = () =>
-  `【溶解度（水100g にとける質量 g）】\n温度　　　│ 0℃　20℃　40℃　60℃\n${Object.entries(SOLUB)
-    .map(([k, v]) => `${k}│ ${v[0]}　${v[20]}　${v[40]}　${v[60]}`)
-    .join('\n')}`;
+// 溶解度の表・溶解度曲線（図として横に出す）。数値は ./solubility.ts
+const SFIG = { kind: 'svg', id: 'solubility' } as const;
+const table = () => '図の溶解度の表・グラフを見て答えなさい。';
 
 let gn = 0;
 const num = (unit: string, q: string, ans: number, explain: string, extra: Partial<InputQ> = {}): InputQ => ({
@@ -218,7 +212,7 @@ export const science: Subject = {
     { id: 's-collect', name: '気体の集め方', questions: collect },
     { id: 's-sol', name: '水溶液の性質', questions: sol },
     { id: 's-conc', name: '質量パーセント濃度', questions: [], gens: conc },
-    { id: 's-solub', name: '溶解度・再結晶', questions: solubFixed, gens: solub },
+    { id: 's-solub', name: '溶解度・再結晶', questions: solubFixed.map((q) => ({ ...q, fig: SFIG })), gens: solub.map((g): Gen => (r) => ({ ...g(r), fig: SFIG })) },
     { id: 's-state', name: '状態変化・蒸留', questions: state },
     { id: 's-tool', name: 'ガスバーナー・メスシリンダー', questions: tool },
     { id: 's-why', name: '理由を書く問題', questions: why },

@@ -12,7 +12,7 @@ type View =
   | { name: 'users' }
   | { name: 'home' }
   | { name: 'subject'; subject: Subject }
-  | { name: 'quiz'; subject: Subject; items: Item[]; mode: 'exam' | 'practice'; title: string; records?: AnswerRecord[]; elapsed?: number }
+  | { name: 'quiz'; subject: Subject; items: Item[]; mode: 'exam' | 'practice'; title: string; answers?: (AnswerRecord | null)[]; idx?: number; elapsed?: number }
   | { name: 'result'; subject: Subject; mode: 'exam' | 'practice'; records: AnswerRecord[]; result: ExamResult | null; isBest: boolean }
   | { name: 'mistakes' }
   | { name: 'history' }
@@ -66,14 +66,14 @@ export default function App() {
 
   const startExam = (subject: Subject) => {
     const items = buildExam(subject, Math.random);
-    const s: Session = { userId: uid, subject: subject.id, mode: 'exam', title: '本番テスト', items, records: [], elapsedSec: 0 };
+    const s: Session = { userId: uid, subject: subject.id, mode: 'exam', title: '本番テスト', items, answers: items.map(() => null), idx: 0, elapsedSec: 0 };
     // 新しい本番を始めたら、前の途中のテストは捨てる
     setData((d) => ({ ...d, sessions: { ...d.sessions, [uid]: s } }));
     setView({ name: 'quiz', subject, items, mode: 'exam', title: '本番テスト' });
   };
 
   const resume = (s: Session) =>
-    setView({ name: 'quiz', subject: subjectById(s.subject), items: s.items, mode: s.mode, title: s.title, records: s.records, elapsed: s.elapsedSec });
+    setView({ name: 'quiz', subject: subjectById(s.subject), items: s.items, mode: s.mode, title: s.title, answers: s.answers, idx: s.idx, elapsed: s.elapsedSec });
 
   const finishQuiz = (subject: Subject, mode: 'exam' | 'practice', records: AnswerRecord[], durationSec: number) => {
     let result: ExamResult | null = null;
@@ -92,8 +92,10 @@ export default function App() {
         sectionScores: secs, wrongs: records.filter((r) => r.score < 1),
       };
       const res = result;
+      // 本番は提出したときに、答えた問題を正答率・まちがいノートに反映する（答え直しができるので途中では数えない）
+      const answered = records.filter((r) => !r.given.startsWith('（未回答') && !r.given.startsWith('（時間切れ'));
       // 記録は新しい30回分だけ（まちがえた問題も持つので）
-      setData((d) => ({ ...withoutSession(d, uid), results: [...d.results, res].slice(-30) }));
+      setData((d) => ({ ...applyAnswers(withoutSession(d, uid), uid, subject.id, answered), results: [...d.results, res].slice(-30) }));
       sounds.fanfare();
     }
     setView({ name: 'result', subject, mode, records, result, isBest });
@@ -141,21 +143,13 @@ export default function App() {
           items={view.items}
           mode={mode}
           title={view.title}
-          initialRecords={view.records}
+          initialAnswers={view.answers}
+          initialIdx={view.idx}
           initialElapsed={view.elapsed}
           timeLimitMin={data.settings.timeLimitMin}
-          onAnswer={(rec, recs, elapsed) =>
-            setData((d) => {
-              // 答えるたびに、単元の正答率とまちがいノートに反映する
-              const next = applyAnswers(d, uid, subject.id, [rec]);
-              const s = d.sessions[uid];
-              if (mode !== 'exam' || !s) return next;
-              return { ...next, sessions: { ...next.sessions, [uid]: { ...s, records: recs, elapsedSec: elapsed } } };
-            })
-          }
-          onTick={(elapsed) =>
-            mode === 'exam' &&
-            setData((d) => (d.sessions[uid] ? { ...d, sessions: { ...d.sessions, [uid]: { ...d.sessions[uid], elapsedSec: elapsed } } } : d))
+          onAnswer={(rec) => setData((d) => applyAnswers(d, uid, subject.id, [rec]))}
+          onSave={(answers, idx, elapsed) =>
+            setData((d) => (d.sessions[uid] ? { ...d, sessions: { ...d.sessions, [uid]: { ...d.sessions[uid], answers, idx, elapsedSec: elapsed } } } : d))
           }
           onSuspend={() => setView({ name: 'home' })}
           onQuit={() => {

@@ -91,15 +91,28 @@ export function TextInput({ q, value, onChange, onSubmit, done, result }: { q: I
 }
 
 /** 並べかえ。カードをタップして順に並べる（同じ語が2回出ても区別できるよう番号で持つ） */
-export function OrderArea({ q, done, onSubmit, result }: { q: OrderQ; done: boolean; onSubmit: (tokens: string[]) => void; result: boolean | null }) {
+export function OrderArea({ q, done, onSubmit, result, initial }: { q: OrderQ; done: boolean; onSubmit: (tokens: string[]) => void; result: boolean | null; initial?: string[] }) {
   const cards = useMemo(() => {
     let s = shuffle(q.tokens.map((t, i) => ({ t, i })));
     // 最初から正しい順にならないようにする
     if (s.every((c, k) => c.i === k) && s.length > 1) s = [...s.slice(1), s[0]];
     return s;
   }, [q]);
-  const [chosen, setChosen] = useState<number[]>([]);
-  useEffect(() => setChosen([]), [q]);
+  /** 前の答え（カードの文字の並び）をカードの番号にもどす */
+  const restore = (): number[] => {
+    if (!initial) return [];
+    const used = new Set<number>();
+    const out: number[] = [];
+    for (const t of initial) {
+      const ci = cards.findIndex((c, i) => c.t === t && !used.has(i));
+      if (ci < 0) return [];
+      used.add(ci);
+      out.push(ci);
+    }
+    return out;
+  };
+  const [chosen, setChosen] = useState<number[]>(restore);
+  useEffect(() => setChosen(restore()), [q]); // eslint-disable-line react-hooks/exhaustive-deps
   const vertical = q.join === '\n';
   return (
     <div className="order-area">

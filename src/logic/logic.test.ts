@@ -124,3 +124,15 @@ describe('保存', () => {
     expect(Object.keys(d.mistakes.me)).toHaveLength(0);
   });
 });
+
+describe('国語の問題文', () => {
+  it('「――線部」の問題には傍線（__語__）があり、【】は使わない', () => {
+    const ja = SUBJECTS.find((s) => s.id === 'japanese')!;
+    for (const u of ja.units) {
+      for (const q of u.questions) {
+        expect(q.q, q.id).not.toContain('【');
+        if (q.q.includes('――線部')) expect(q.q, q.id).toMatch(/__.+__/);
+      }
+    }
+  });
+});

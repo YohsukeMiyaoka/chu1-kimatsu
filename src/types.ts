@@ -9,7 +9,9 @@ export type Figure =
       points?: { x: number; y: number; label: string }[];
       range?: number;
     }
-  | { kind: 'svg'; id: string };
+  | { kind: 'svg'; id: string }
+  /** 表（1行目が見出し） */
+  | { kind: 'table'; head: string[]; rows: (string | number)[][]; caption?: string; rowHead?: boolean };
 
 interface QBase {
   id: string;
@@ -100,7 +102,8 @@ export interface Subject {
   units: Unit[];
   /** 本番モードの大問構成（配点合計100点） */
   exam: Section[];
-  passages?: Record<string, { title: string; text: string }>;
+  /** 読解・古典の本文。translation（現代語訳）は練習のときだけ開ける（本番では見せない） */
+  passages?: Record<string, { title: string; text: string; translation?: string; note?: string }>;
 }
 
 export interface User {

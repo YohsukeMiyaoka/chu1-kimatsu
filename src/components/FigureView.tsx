@@ -1,4 +1,5 @@
 import type { Figure } from '../types';
+import { SOLUB, SOLUB_TEMPS } from '../data/solubility';
 
 const INK = 'currentColor';
 
@@ -133,8 +134,74 @@ function Burner() {
   );
 }
 
+/** 表 */
+function Table({ fig }: { fig: Extract<Figure, { kind: 'table' }> }) {
+  return (
+    <table className="fig-table">
+      {fig.caption && <caption>{fig.caption}</caption>}
+      <thead>
+        <tr>{fig.head.map((h, i) => <th key={i}>{h}</th>)}</tr>
+      </thead>
+      <tbody>
+        {fig.rows.map((r, i) => (
+          <tr key={i}>
+            {r.map((c, j) => (fig.rowHead !== false && j === 0 ? <th key={j} scope="row">{c}</th> : <td key={j}>{c}</td>))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+const SOLUB_COLORS: Record<string, string> = { 硝酸カリウム: '#d6336c', ミョウバン: '#3a5bd9', 塩化ナトリウム: '#1f9d6b' };
+
+/** 溶解度の表と溶解度曲線 */
+function Solubility() {
+  const W = 340, H = 250, L = 44, B = 210, T = 14, R = 300;
+  const X = (t: number) => L + (t / 60) * (R - L);
+  const Y = (g: number) => B - (g / 120) * (B - T);
+  return (
+    <div className="fig-stack">
+      <Table
+        fig={{
+          kind: 'table',
+          caption: '溶解度（水100g にとける質量〔g〕）',
+          head: ['物質＼水の温度', ...SOLUB_TEMPS.map((t) => `${t}℃`)],
+          rows: Object.entries(SOLUB).map(([k, v]) => [k, ...SOLUB_TEMPS.map((t) => v[t])]),
+        }}
+      />
+      <svg viewBox={`0 0 ${W} ${H}`} className="figure" role="img" aria-label="溶解度曲線">
+        {[0, 20, 40, 60, 80, 100, 120].map((g) => (
+          <g key={g}>
+            <line x1={L} y1={Y(g)} x2={R} y2={Y(g)} className="fig-grid" />
+            <text x={L - 6} y={Y(g) + 4} textAnchor="end" className="fig-tick">{g}</text>
+          </g>
+        ))}
+        {SOLUB_TEMPS.map((t) => (
+          <g key={t}>
+            <line x1={X(t)} y1={T} x2={X(t)} y2={B} className="fig-grid" />
+            <text x={X(t)} y={B + 16} textAnchor="middle" className="fig-tick">{t}</text>
+          </g>
+        ))}
+        <line x1={L} y1={B} x2={R} y2={B} className="fig-axis" />
+        <line x1={L} y1={B} x2={L} y2={T} className="fig-axis" />
+        <text x={R} y={B + 32} textAnchor="end" className="fig-tick">水の温度〔℃〕</text>
+        <text x={L + 6} y={T + 10} className="fig-tick">〔g〕</text>
+        {Object.entries(SOLUB).map(([k, v]) => (
+          <g key={k}>
+            <polyline points={SOLUB_TEMPS.map((t) => `${X(t)},${Y(v[t])}`).join(' ')} fill="none" stroke={SOLUB_COLORS[k]} strokeWidth={2.6} />
+            {SOLUB_TEMPS.map((t) => <circle key={t} cx={X(t)} cy={Y(v[t])} r={3} fill={SOLUB_COLORS[k]} />)}
+            <text x={X(60) - 4} y={Y(v[60]) - 8} textAnchor="end" className="fig-tick" fill={SOLUB_COLORS[k]} style={{ fill: SOLUB_COLORS[k], fontWeight: 700 }}>{k}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 export function FigureView({ fig }: { fig: Figure }) {
   if (fig.kind === 'graph') return <Graph fig={fig} />;
+  if (fig.kind === 'table') return <Table fig={fig} />;
   switch (fig.id) {
     case 'collect':
       return <Collect />;
@@ -142,6 +209,8 @@ export function FigureView({ fig }: { fig: Figure }) {
       return <Heat />;
     case 'burner':
       return <Burner />;
+    case 'solubility':
+      return <Solubility />;
     default:
       return null;
   }

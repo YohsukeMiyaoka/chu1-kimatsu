@@ -117,7 +117,7 @@ function ResumeBanner({ session, onResume, onDiscard }: { session: Session; onRe
   const s = SUBJECTS.find((x) => x.id === session.subject);
   return (
     <div className="resume">
-      <span>⏸ {s?.icon} {s?.name} {session.title}の途中（{session.records.length} / {session.items.length}問・{Math.floor(session.elapsedSec / 60)}分経過）</span>
+      <span>⏸ {s?.icon} {s?.name} {session.title}の途中（答えた {session.answers.filter(Boolean).length} / {session.items.length}問・{Math.floor(session.elapsedSec / 60)}分経過）</span>
       <div className="row">
         <button className="btn primary" onClick={onResume}>続きから</button>
         {onDiscard && <button className="btn small ghost" onClick={onDiscard}>捨てる</button>}
