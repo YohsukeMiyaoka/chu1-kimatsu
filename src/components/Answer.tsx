@@ -42,7 +42,7 @@ export function MathInput({ q, value, onChange, onSubmit, done, result }: { q: I
         <div className="math-pad">
           {PAD.map((k) => (
             <button key={k} className={`key ${/\d/.test(k) ? '' : 'func'}`} onClick={() => onChange(value + k)}>
-              {k === '/' ? '分数 /' : <span className="math">{k === '-' ? '−' : k}</span>}
+              {k === '/' ? '分数 /' : <span className="math">{k === '-' ? '−' : /^[xya]$/.test(k) ? <i className="var">{k}</i> : k}</span>}
             </button>
           ))}
           <button className="key delete" onClick={() => onChange(value.slice(0, -1))}>⌫ 1字消す</button>
