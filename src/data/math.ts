@@ -1,6 +1,10 @@
 // 数学：東京書籍「新しい数学1」P98〜156（3章 方程式・4章 比例と反比例）
 // 計算問題は gens（毎回数値を変えて作る）。答えはプログラムで計算する。
-import type { ChoiceQ, Gen, InputQ, Subject } from '../types';
+import type { ChoiceQ, Gen, InputQ, Question, Subject } from '../types';
+import { hardApp, hardEq, hardFunc, trapQs } from './mathHard';
+
+/** 単元IDをつけかえる（mathHard の問題を単元ごとに分けるため） */
+const inUnit = (unit: string, gens: Gen[]): Gen[] => gens.map((g) => (r) => ({ ...g(r), unit }) as Question);
 
 type R = () => number;
 const ri = (r: R, lo: number, hi: number) => lo + Math.floor(r() * (hi - lo + 1));
@@ -368,14 +372,18 @@ export const math: Subject = {
     { id: 'm-inv', name: '反比例', questions: funcQs.filter((q) => q.unit === 'm-inv'), gens: [prop[3], prop[4], prop[6]] },
     { id: 'm-graph', name: '比例・反比例のグラフ', questions: [], gens: graph },
     { id: 'm-use', name: '比例・反比例の利用', questions: [], gens: app2 },
+    { id: 'm-trap', name: '★ひっかけ問題', questions: trapQs.map((q) => ({ ...q, unit: 'm-trap' })) },
+    { id: 'm-hard-eq', name: '★難しめ：方程式・比例式', questions: [], gens: inUnit('m-hard-eq', hardEq) },
+    { id: 'm-hard-app', name: '★難しめ：方程式の文章題', questions: [], gens: inUnit('m-hard-app', hardApp) },
+    { id: 'm-hard-func', name: '★難しめ：比例・反比例', questions: [], gens: inUnit('m-hard-func', hardFunc) },
   ],
   exam: [
-    { title: '方程式を解く', units: ['m-eq', 'm-eq2'], count: 8, points: 4 },
+    { title: '方程式を解く', units: ['m-eq', 'm-eq2'], count: 7, points: 4 },
     { title: '比例式', units: ['m-ratio'], count: 2, points: 4 },
-    { title: '方程式の利用', units: ['m-app'], count: 4, points: 5 },
-    { title: '関数・座標', units: ['m-func'], count: 3, points: 2 },
-    { title: '比例と反比例', units: ['m-prop', 'm-inv'], count: 5, points: 4 },
+    { title: '方程式の利用', units: ['m-app', 'm-hard-app'], count: 3, points: 5 },
+    { title: '関数・ひっかけ', units: ['m-func', 'm-trap'], count: 3, points: 2 },
+    { title: '比例と反比例', units: ['m-prop', 'm-inv', 'm-use'], count: 4, points: 4 },
     { title: 'グラフ', units: ['m-graph'], count: 3, points: 4 },
-    { title: '比例と反比例の利用', units: ['m-use'], count: 1, points: 2 },
+    { title: '応用（難しめ）', units: ['m-hard-eq', 'm-hard-func'], count: 3, points: 5 },
   ],
 };

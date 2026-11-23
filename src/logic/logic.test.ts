@@ -91,7 +91,7 @@ describe('問題データ', () => {
                 if (q.kind === 'math') {
                   const n = parseNumber(q.answers[0]);
                   // 数の答えは小数第1位まで（中1で扱う範囲）
-                  if (n !== null) expect(Math.abs(n * 10 - Math.round(n * 10)), q.q).toBeLessThan(1e-9);
+                  if (n !== null && !q.answers[0].includes('/')) expect(Math.abs(n * 10 - Math.round(n * 10)), q.q).toBeLessThan(1e-9);
                 }
               }
             }
@@ -134,5 +134,42 @@ describe('国語の問題文', () => {
         if (q.q.includes('――線部')) expect(q.q, q.id).toMatch(/__.+__/);
       }
     }
+  });
+});
+
+describe('数学：作った方程式の答えを代入して確かめる', () => {
+  /** 問題文の式を JavaScript の式にして x を代入する */
+  const evalSide = (expr: string, x: number): number => {
+    const js = expr
+      .replace(/−/g, '-')
+      .replace(/(\d|\))\s*(x|\()/g, '$1*$2')
+      .replace(/x/g, `(${x})`);
+    return Function(`"use strict"; return (${js});`)() as number;
+  };
+  it('方程式・比例式の答えは式を満たす', async () => {
+    const { math } = await import('../data/math');
+    const rng = seededRng(7);
+    let checked = 0;
+    for (const u of math.units) {
+      for (const g of u.gens ?? []) {
+        for (let i = 0; i < 200; i++) {
+          const q = g(rng);
+          if (q.type !== 'input' || q.prefix !== 'x =') continue;
+          const line = q.q.split('\n').at(-1)!;
+          const x = parseNumber(q.answers[0])!;
+          if (q.q.includes('比例式')) {
+            const [left, right] = line.split('=');
+            const [a, b] = left.split(':').map((s) => evalSide(s, x));
+            const [c, d] = right.split(':').map((s) => evalSide(s, x));
+            expect(a * d, line).toBeCloseTo(b * c, 6);
+          } else if (q.q.includes('方程式を解きなさい')) {
+            const [left, right] = line.split('=');
+            expect(evalSide(left, x), `${line}  x=${x}`).toBeCloseTo(evalSide(right, x), 6);
+          } else continue;
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(500);
   });
 });

@@ -91,6 +91,8 @@ node scripts/make-icons.mjs  # ホーム画面用アイコンを作り直す
 ## 構成メモ
 
 - `src/data/<教科>.ts`：教科ごとの単元・問題・大問構成（`Subject`）。`src/data/index.ts` で並び順を決める。
+  - 追加問題は `src/data/more<教科>.ts`（単元IDごと）に書き、`index.ts` の `withMore` で同じ単元に合流させる。
+  - 数学の「★ひっかけ」「★難しめ」は `src/data/mathHard.ts`。作った方程式・比例式は、テストで答えを代入して確かめている。
   - 計算問題は `gens`（乱数から毎回ちがう問題を作る関数）。答えはプログラムで計算する。
   - 国語・英語の読解の本文は `passages` に置き、問題から `passage` で参照する。
 - `src/logic/`：出題（`exam.ts`）・採点と正規化（`grade.ts`）・保存（`storage.ts`）など。UIから独立、テストあり（`logic.test.ts`）。
